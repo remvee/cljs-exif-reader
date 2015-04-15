@@ -1,0 +1,26 @@
+<html>
+  <body>
+    <input type="file" id="file-input">
+    <dl id="output"></pre>
+    <script src="../target/cljs/exif-reader.js" type="text/javascript"></script>
+    <script type="text/javascript">
+      (function() {
+        var el = document.getElementById("file-input");
+        el.addEventListener("change", function() {
+          var file = el.files[0];
+          var reader = new FileReader;
+          reader.addEventListener("loadend", function() {
+            var data = new DataView(reader.result);
+            var exif_clj = remworks.exif_reader.from_jpeg(data) || remworks.exif_reader.from_tiff(data);
+            var data = cljs.core.clj__GT_js(exif_clj), output = "";
+            for (key in data) {
+              output += "<dt>" + key + "</dt><dd>" + data[key] + "<dd>\n";
+            }
+            document.getElementById("output").innerHTML = output;
+          });
+          reader.readAsArrayBuffer(file);
+        });
+      })();
+    </script>
+  </body>
+</html>

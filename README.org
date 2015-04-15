@@ -1,0 +1,39 @@
+* cljs-exif-reader
+
+  Extract information from TIFF and JPEG images.
+
+** Usage
+
+   Build and install it in your local repository:
+
+   #+BEGIN_SRC
+lein install
+   #+END_SRC
+
+   add a dependency to your project:
+
+   #+BEGIN_SRC
+[remworks/cljs-exif-reader "0.1.0-SNAPSHOT"]
+   #+END_SRC
+
+** Development
+
+   Start cljsbuild:
+
+   #+BEGIN_SRC
+lein cljsbuild build
+   #+END_SRC
+
+   point your browser to file:resources/dev.html and choose a TIFF or JPEG file.
+
+** License
+
+Copyright (c) Remco van 't Veer. All rights reserved.
+
+The use and distribution terms for this software are covered by the
+Eclipse Public License 1.0
+(http://opensource.org/licenses/eclipse-1.0.php) which can be found in
+the file epl-v10.html at the root of this distribution.  By using this
+software in any fashion, you are agreeing to be bound by the terms of
+this license.  You must not remove this notice, or any other, from
+this software.

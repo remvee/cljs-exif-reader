@@ -16,6 +16,9 @@ lein install
 [remworks/cljs-exif-reader "0.1.0-SNAPSHOT"]
    #+END_SRC
 
+   See file:dev/cljs/user.cljs and file:resources/dev.html for an example of
+   dealing with a file input element.
+
 ** Development
 
    Start cljsbuild:

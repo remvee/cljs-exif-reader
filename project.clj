@@ -7,7 +7,6 @@
                  [org.clojure/clojurescript "0.0-3126"]]
 
   :plugins [[lein-cljsbuild "1.0.5"]]
-  :hooks [leiningen.cljsbuild]
 
-  :cljsbuild {:builds {:dev {:source-paths ["src"]
+  :cljsbuild {:builds {:dev {:source-paths ["src" "dev"]
                              :compiler {:output-to "target/cljs/exif-reader.js"}}}})

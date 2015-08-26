@@ -4,16 +4,10 @@
 
 ** Usage
 
-   Build and install it in your local repository:
+   Add a dependency to your project:
 
    #+BEGIN_SRC
-lein install
-   #+END_SRC
-
-   add a dependency to your project:
-
-   #+BEGIN_SRC
-[remworks/cljs-exif-reader "0.1.0-SNAPSHOT"]
+[remworks/cljs-exif-reader "0.1.0"]
    #+END_SRC
 
    See file:dev/cljs/user.cljs and file:resources/dev.html for an example of

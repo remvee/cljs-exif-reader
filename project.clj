@@ -1,4 +1,4 @@
-(defproject remworks/cljs-exif-reader "0.1.0"
+(defproject remworks/cljs-exif-reader "0.2.0-SNAPSHOT"
   :description "Extract information from TIFF and JPEG images."
 
   :url "https://github.com/remvee/cljs-exif-reader"

@@ -2,6 +2,8 @@
   (:require [clojure.string :refer [join]]
             [remworks.exif-reader :as exif-reader]))
 
+(enable-console-print!)
+
 (defn ^:export setup []
   (let [el (.getElementById js/document "file-input")
         out (.getElementById js/document "output")]

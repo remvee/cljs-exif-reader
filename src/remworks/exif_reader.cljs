@@ -94,9 +94,9 @@
    0x87AC :image-layer
    0x8298 :copyright
    0x83BB :iptc
-   0x8769 :exif
 
    ;; exif
+   0x8769 :exif
    0x829A :exposure-time
    0x829D :f-number
    0x8822 :exposure-program
@@ -152,10 +152,94 @@
    0xA40A :sharpness
    0xA40B :device-setting-description
    0xA40C :subject-distance-range
-   0xA420 :image-unique-id})
+   0xA420 :image-unique-id
+
+   ;; gps
+   0x8825 :gps
+   0x0000 :gps-version-id
+   0x0001 :gps-latitude-ref
+   0x0002 :gps-latitude
+   0x0003 :gps-longitude-ref
+   0x0004 :gps-longitude
+   0x0005 :gps-altitude-ref
+   0x0006 :gps-altitude
+   0x0007 :gps-time-stamp
+   0x0008 :gps-satellites
+   0x0009 :gps-status
+   0x000a :gps-measure-mode
+   0x000b :gps-dop
+   0x000c :gps-speed-ref
+   0x000d :gps-speed
+   0x000e :gps-track-ref
+   0x000f :gps-track
+   0x0010 :gps-img-direction-ref
+   0x0011 :gps-img-direction
+   0x0012 :gps-map-datum
+   0x0013 :gps-dest-latitude-ref
+   0x0014 :gps-dest-latitude
+   0x0015 :gps-dest-longitude-ref
+   0x0016 :gps-dest-longitude
+   0x0017 :gps-dest-bearing-ref
+   0x0018 :gps-dest-bearing
+   0x0019 :gps-dest-distance-ref
+   0x001a :gps-dest-distance
+   0x001b :gps-processing-method
+   0x001c :gps-area-information
+   0x001d :gps-date-stamp
+   0x001e :gps-differential})
 
 (def ^:private type-lengths
   {3 2, 4 4, 5 8, 8 2, 9 4, 10 8})
+
+(def ^:private nested-tags
+  #{:exif :gps})
+
+(defrecord Rational [numerator denominator] Object
+           (toString [_] (str numerator "/" denominator))
+           (toNumber [_] (/ numerator denominator)))
+
+(defn- to-num [v]
+  (if (.-toNumber v)
+    (.toNumber v)
+    (js/parseFloat v)))
+
+(defrecord Degrees [deg min sec] Object
+           (toString [this]
+             (let [deg (.toNumber this)
+                   min (* (- deg (Math/floor deg)) 60)
+                   sec (* (- min (Math/floor min)) 60)]
+               (str (Math/floor deg) "°"
+                    (Math/floor min) "'"
+                    (Math/floor sec) "\"")))
+           (toNumber [_]
+             (+ (to-num deg)
+                (/ (to-num min) 60)
+                (/ (to-num sec) (* 60 60)))))
+
+(defn to-aperture-value [v]
+  (/ (Math/round (* (Math/pow 1.4142 (to-num v)) 10)) 10))
+
+(defn to-degrees [[d m s]]
+  (Degrees. d m s))
+
+(defn to-inst [v]
+  (let [[_ year mon day hour min sec]
+        (re-find #"^(\d{4}):(\d\d):(\d\d) (\d\d):(\d\d):(\d\d)$" v)]
+    (js/Date. (str year "-" mon "-" day "T" hour ":" min ":" sec))))
+
+(defn to-shutter-speed-value [v]
+  (Rational. 1 (int (Math/pow 2 (to-num v)))))
+
+(def ^:private tag-adapters
+  {:aperture-value to-aperture-value
+   :date-time to-inst
+   :date-time-digitized to-inst
+   :date-time-original to-inst
+   :gps-dest-latitude to-degrees
+   :gps-dest-longitude to-degrees
+   :gps-latitude to-degrees
+   :gps-longitude to-degrees
+   :shutter-speed-value to-shutter-speed-value})
 
 (defn- to-str [data offset length]
   (->> (range offset (+ offset length))
@@ -171,28 +255,29 @@
           length (or (type-lengths type) 1)
           offset (if (> (* count length) 4)
                    (.getUint32 data (+ 8 offset) le)
-                   (+ offset 8))]
-      (when-let [adapter (case type
-                           1 #(.getUint8 data (+ offset %) le)
-                           2 #(to-str data offset (* count length))
-                           3 #(.getUint16 data (+ offset %) le)
-                           4 #(.getUint32 data (+ offset %) le)
-                           5 #(str (.getUint32 data (+ offset %) le)
-                                   "/"
-                                   (.getUint32 data (+ offset % 4) le))
-                           6 #(.getInt8 data (+ offset %) le)
-                           8 #(.getInt16 data (+ offset %) le)
-                           9 #(.getInt32 data (+ offset %) le)
-                           10 #(str (.getInt32 data (+ offset %) le)
-                                    "/"
-                                    (.getInt32 data (+ offset % 4) le))
-                           nil)]
+                   (+ offset 8))
+          tag-adapter (or (tag-adapters tag) identity)]
+      (when-let [type-adapter
+                 (case type
+                   1 #(.getUint8 data (+ offset %) le)
+                   2 #(to-str data offset (* count length))
+                   3 #(.getUint16 data (+ offset %) le)
+                   4 #(.getUint32 data (+ offset %) le)
+                   5 #(Rational. (.getUint32 data (+ offset %) le)
+                                 (.getUint32 data (+ offset % 4) le))
+                   6 #(.getInt8 data (+ offset %) le)
+                   8 #(.getInt16 data (+ offset %) le)
+                   9 #(.getInt32 data (+ offset %) le)
+                   10 #(Rational. (.getInt32 data (+ offset %) le)
+                                  (.getInt32 data (+ offset % 4) le))
+                   nil)]
         {:tag tag
-         :value (if (= 2 type)
-                  (adapter)
-                  (if (> count 1)
-                    (vec (map adapter (range 0 (* count length) length)))
-                    (adapter 0)))}))))
+         :value (tag-adapter
+                 (if (= 2 type)
+                   (type-adapter)
+                   (if (> count 1)
+                     (vec (map type-adapter (range 0 (* count length) length)))
+                     (type-adapter 0))))}))))
 
 (defn- ifds [data offset le]
   (let [offset (or offset (.getUint32 data 4 le))
@@ -200,7 +285,7 @@
         next-offset (.getUint32 data (+ offset 2 (* num 12)) le)
         res (for [offset (map #(+ offset 2 (* 12 %)) (range num))]
               (let [ifd (ifd data offset le)]
-                (if (= :exif (:tag ifd))
+                (if (nested-tags (:tag ifd))
                   (ifds data (:value ifd) le)
                   ifd)))
         res (->> res

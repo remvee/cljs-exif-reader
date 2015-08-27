@@ -160,6 +160,7 @@
 (defn- to-str [data offset length]
   (->> (range offset (+ offset length))
        (map #(.getUint8 data %))
+       (take-while (partial not= 0))
        (map char)
        (apply str)))
 

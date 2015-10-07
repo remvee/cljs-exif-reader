@@ -18,7 +18,7 @@
    Start cljsbuild:
 
    #+BEGIN_SRC
-lein cljsbuild build
+lein cljsbuild auto
    #+END_SRC
 
    point your browser to file:resources/dev.html and choose a TIFF or JPEG file.

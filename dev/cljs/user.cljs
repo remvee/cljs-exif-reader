@@ -15,7 +15,7 @@
          (.addEventListener
           reader "loadend"
           (fn []
-            (let [data (js/DataView. (.-result reader))
+            (let [data (.-result reader)
                   exif (or (exif-reader/from-jpeg data)
                            (exif-reader/from-tiff data))]
               (set! (.-innerHTML out)

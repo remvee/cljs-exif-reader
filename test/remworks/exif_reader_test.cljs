@@ -7,7 +7,7 @@
 (def fs (nodejs/require "fs"))
 
 (defn data-from-file [filename]
-  (js/DataView. (.-buffer (js/Uint8Array. (.readFileSync fs filename)))))
+  (.-buffer (js/Uint8Array. (.readFileSync fs filename))))
 
 (deftest basic
   (let [exif (-> "resources/test/exif.jpg" data-from-file exif-reader/from-jpeg)]

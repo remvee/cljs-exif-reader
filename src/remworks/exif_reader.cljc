@@ -1,5 +1,6 @@
 (ns remworks.exif-reader
-  "Extract information from TIFF and JPEG images.")
+  "Extract information from TIFF and JPEG images."
+  (:require [remworks.data-view :refer [data-view] :as data-view]))
 
 (def ^:private tag-names
   {0x00FE :new-subfile-type
@@ -194,27 +195,35 @@
 (def ^:private nested-tags
   #{:exif :gps})
 
-(defrecord Rational [numerator denominator] Object
-           (toString [_] (str numerator "/" denominator))
-           (toNumber [_] (/ numerator denominator)))
+(defprotocol IValue
+  (toNumber [_]))
+
+(defrecord Rational [numerator denominator]
+  IValue
+  (toNumber [_] (/ numerator denominator))
+  Object
+  (toString [_] (str numerator "/" denominator)))
 
 (defn- to-num [v]
-  (if (.-toNumber v)
-    (.toNumber v)
-    (js/parseFloat v)))
+  (if (satisfies? IValue v)
+    (toNumber v)
+    #?(:cljs (js/parseFloat v)
+       :clj (Long/parseLong v))))
 
-(defrecord Degrees [deg min sec] Object
-           (toString [this]
-             (let [deg (.toNumber this)
-                   min (* (- deg (Math/floor deg)) 60)
-                   sec (* (- min (Math/floor min)) 60)]
-               (str (Math/floor deg) "°"
-                    (Math/floor min) "'"
-                    (Math/floor sec) "\"")))
-           (toNumber [_]
-             (+ (to-num deg)
-                (/ (to-num min) 60)
-                (/ (to-num sec) (* 60 60)))))
+(defrecord Degrees [deg min sec]
+  IValue
+  (toNumber [_]
+    (+ (to-num deg)
+       (/ (to-num min) 60)
+       (/ (to-num sec) (* 60 60))))
+  Object
+  (toString [this]
+    (let [deg (toNumber this)
+          min (* (- deg (int deg)) 60)
+          sec (* (- min (int min)) 60)]
+      (str (int deg) "°"
+           (int min) "'"
+           (int sec) "\""))))
 
 (defn to-aperture-value [v]
   (/ (Math/round (* (Math/pow 1.4142 (to-num v)) 10)) 10))
@@ -225,7 +234,13 @@
 (defn to-inst [v]
   (let [[_ year mon day hour min sec]
         (re-find #"^(\d{4}):(\d\d):(\d\d) (\d\d):(\d\d):(\d\d)$" v)]
-    (js/Date. (str year "-" mon "-" day "T" hour ":" min ":" sec))))
+    #?(:cljs (js/Date. (str year "-" mon "-" day "T" hour ":" min ":" sec))
+       :clj (java.util.Date. (- (Long/parseLong year) 1900)
+                             (dec (Long/parseLong mon))
+                             (Long/parseLong day)
+                             (Long/parseLong hour)
+                             (Long/parseLong min)
+                             (Long/parseLong sec)))))
 
 (defn to-shutter-speed-value [v]
   (Rational. 1 (int (Math/pow 2 (to-num v)))))
@@ -243,33 +258,33 @@
 
 (defn- to-str [data offset length]
   (->> (range offset (+ offset length))
-       (map #(.getUint8 data %))
+       (map #(data-view/getUint8 data %))
        (take-while (partial not= 0))
        (map char)
        (apply str)))
 
 (defn- ifd [data offset le]
-  (when-let [tag (tag-names (.getUint16 data offset le))]
-    (let [type (.getUint16 data (+ 2 offset) le)
-          count (.getUint32 data (+ 4 offset) le)
+  (when-let [tag (tag-names (data-view/getUint16 data offset le))]
+    (let [type (data-view/getUint16 data (+ 2 offset) le)
+          count (data-view/getUint32 data (+ 4 offset) le)
           length (or (type-lengths type) 1)
           offset (if (> (* count length) 4)
-                   (.getUint32 data (+ 8 offset) le)
+                   (data-view/getUint32 data (+ 8 offset) le)
                    (+ offset 8))
           tag-adapter (or (tag-adapters tag) identity)]
       (when-let [type-adapter
                  (case type
-                   1 #(.getUint8 data (+ offset %) le)
+                   1 #(data-view/getUint8 data (+ offset %))
                    2 #(to-str data offset (* count length))
-                   3 #(.getUint16 data (+ offset %) le)
-                   4 #(.getUint32 data (+ offset %) le)
-                   5 #(Rational. (.getUint32 data (+ offset %) le)
-                                 (.getUint32 data (+ offset % 4) le))
-                   6 #(.getInt8 data (+ offset %) le)
-                   8 #(.getInt16 data (+ offset %) le)
-                   9 #(.getInt32 data (+ offset %) le)
-                   10 #(Rational. (.getInt32 data (+ offset %) le)
-                                  (.getInt32 data (+ offset % 4) le))
+                   3 #(data-view/getUint16 data (+ offset %) le)
+                   4 #(data-view/getUint32 data (+ offset %) le)
+                   5 #(Rational. (data-view/getUint32 data (+ offset %) le)
+                                 (data-view/getUint32 data (+ offset % 4) le))
+                   6 #(data-view/getInt8 data (+ offset %))
+                   8 #(data-view/getInt16 data (+ offset %) le)
+                   9 #(data-view/getInt32 data (+ offset %) le)
+                   10 #(Rational. (data-view/getInt32 data (+ offset %) le)
+                                  (data-view/getInt32 data (+ offset % 4) le))
                    nil)]
         {:tag tag
          :value (tag-adapter
@@ -280,9 +295,9 @@
                      (type-adapter 0))))}))))
 
 (defn- ifds [data offset le]
-  (let [offset (or offset (.getUint32 data 4 le))
-        num (.getUint16 data offset le)
-        next-offset (.getUint32 data (+ offset 2 (* num 12)) le)
+  (let [offset (or offset (data-view/getUint32 data 4 le))
+        num (data-view/getUint16 data offset le)
+        next-offset (data-view/getUint32 data (+ offset 2 (* num 12)) le)
         res (for [offset (map #(+ offset 2 (* 12 %)) (range num))]
               (let [ifd (ifd data offset le)]
                 (if (nested-tags (:tag ifd))
@@ -293,42 +308,44 @@
                  (filter identity))]
     (if (and next-offset
              (> next-offset 0)
-             (< next-offset (.-byteLength data)))
+             (< next-offset (data-view/getLength data)))
       (concat res (ifds data next-offset le))
       res)))
 
 (defn from-tiff
-  "Reading TIFF image information from a js/DataView."
+  "Reading TIFF image information from a byte array."
   [data]
-  (when (and data
-             (or (and (= "MM" (to-str data 0 2)) (= 42 (.getUint16 data 2 false)))
-                 (and (= "II" (to-str data 0 2)) (= 42 (.getUint16 data 2 true)))))
-    (reduce (fn [res {:keys [tag value]}] (assoc res tag value))
-            {}
-            (ifds data nil (= "II" (to-str data 0 2))))))
+  (let [data (data-view data)]
+    (when (and data
+               (or (and (= "MM" (to-str data 0 2)) (= 42 (data-view/getUint16 data 2 false)))
+                   (and (= "II" (to-str data 0 2)) (= 42 (data-view/getUint16 data 2 true)))))
+      (reduce (fn [res {:keys [tag value]}] (assoc res tag value))
+              {}
+              (ifds data nil (= "II" (to-str data 0 2)))))))
 
 (defn from-jpeg
-  "Reading JPEG image information from a js/DataView."
+  "Reading JPEG image information from a byte array."
   [data]
-  (when (and data
-             (= 0xFFD8 (.getUint16 data 0)))
-    (let [length (.-byteLength data)
-          data (loop [offset 2]
-                 (when (< offset length)
-                   (if (= 0xFF (.getUint8 data offset))
-                     (let [marker (.getUint8 data (+ 1 offset))]
-                       (cond
-                         (= 0xE1 marker)  ; APP1
-                         (if (= "Exif" (to-str data (+ 4 offset) 4))
-                           (js/DataView. (.-buffer data)
-                                         (+ 4 6 offset)
-                                         (.getUint16 data (+ 2 offset)))
-                           (recur (+ 4 offset (.getUint16 data (+ 2 offset)))))
+  (let [data (data-view data)]
+    (when (= 0xFFD8 (data-view/getUint16 data 0 false))
+      (let [length (data-view/getLength data)
+            data (loop [offset 2]
+                   (when (< offset length)
+                     (if (= 0xFF (data-view/getUint8 data offset))
+                       (let [marker (data-view/getUint8 data (+ 1 offset))]
+                         (cond
+                           (= 0xE1 marker)  ; APP1
+                           (if (= "Exif" (to-str data (+ 4 offset) 4))
+                             (data-view (data-view/getBuffer data)
+                                        (+ 4 6 offset)
+                                        (data-view/getUint16 data (+ 2 offset) false))
+                             (recur (+ 4 offset (data-view/getUint16 data (+ 2 offset) false))))
 
-                         (#{0xD9 0xDA} marker) ; EOI SOS
-                         nil
+                           (#{0xD9 0xDA} marker) ; EOI SOS
+                           nil
 
-                         :else
-                         (recur (inc offset))))
-                     (recur (inc offset)))))]
-      (from-tiff data))))
+                           :else
+                           (recur (inc offset))))
+                       (recur (inc offset)))))]
+        (when data
+          (from-tiff data))))))

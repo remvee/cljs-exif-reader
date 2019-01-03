@@ -1,3 +1,7 @@
+#+html: <a href="https://circleci.com/gh/remvee/cljs-exif-reader"><img src="https://circleci.com/gh/remvee/cljs-exif-reader.svg?style=svg" /></a>
+#+html: <a href="https://clojars.org/remworks/cljs-exif-reader"><img src="https://img.shields.io/clojars/v/remworks/cljs-exif-reader.svg" /></a>
+
+
 * cljs-exif-reader
 
   Extract information from TIFF and JPEG images.
@@ -7,7 +11,7 @@
    Add a dependency to your project:
 
    #+BEGIN_SRC
-[remworks/cljs-exif-reader "0.1.0"]
+[remworks/cljs-exif-reader "0.2.0"]
    #+END_SRC
 
    See file:dev/cljs/user.cljs and file:resources/dev.html for an example of

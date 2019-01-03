@@ -1,0 +1,19 @@
+version: 2
+jobs:
+  build:
+    working_directory: ~/cljs-exif-reader
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+    environment:
+      LEIN_ROOT: nbd
+      JVM_OPTS: -Xmx3200m
+    steps:
+      - checkout
+      - restore_cache:
+          key: cljs-exif-reader-{{ checksum "project.clj" }}
+      - run: lein deps
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: cljs-exif-reader-{{ checksum "project.clj" }}
+      - run: lein test

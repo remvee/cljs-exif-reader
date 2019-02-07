@@ -11,7 +11,7 @@
    Add a dependency to your project:
 
    #+BEGIN_SRC
-[remworks/cljs-exif-reader "0.2.0"]
+[remworks/cljs-exif-reader "0.3.0"]
    #+END_SRC
 
    See file:dev/cljs/user.cljs and file:resources/dev.html for an example of

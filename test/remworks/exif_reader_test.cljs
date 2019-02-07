@@ -17,3 +17,7 @@
   (let [exif (-> "resources/test/gps.tif" data-from-file exif-reader/from-tiff)]
     (is (= "6°47'19\"" (str (:gps-longitude exif))))
     (is (= "53°33'19\"" (str (:gps-latitude exif))))))
+
+(deftest malformed
+  (let [exif (-> "resources/test/malformed.jpg" data-from-file exif-reader/from-jpeg)]
+    (is (= "DMC-FZ1000" (:model exif)))))

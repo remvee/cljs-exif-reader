@@ -120,7 +120,8 @@
          0x001b :gps-processing-method
          0x001c :gps-area-information
          0x001d :gps-date-stamp
-         0x001e :gps-differential}})
+         0x001e :gps-differential
+         0x001f :gps-h-positioning-error}})
 
 (def ^:private tag-max-count (* 8 1024))
 

@@ -391,9 +391,9 @@
                          (cond
                            (= 0xE1 marker)  ; APP1
                            (if (= "Exif" (to-str data (+ 4 offset) 4))
-                             (data-view (data-view/getBuffer data)
-                                        (+ 4 6 offset)
-                                        (data-view/getUint16 data (+ 2 offset) false))
+                             (data-view/slice data
+                                              (+ 4 6 offset)
+                                              (data-view/getUint16 data (+ 2 offset) false))
                              (recur (+ 4 offset (data-view/getUint16 data (+ 2 offset) false))))
 
                            (#{0xD9 0xDA} marker) ; EOI SOS

@@ -16,4 +16,4 @@ jobs:
           paths:
             - ~/.m2
           key: cljs-exif-reader-{{ checksum "project.clj" }}
-      - run: lein test
+      - run: lein test-all

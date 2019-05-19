@@ -16,7 +16,9 @@
   :doo {:build "test"
         :alias {:default [:node]}}
 
-  :aliases {"test" ["doo" "node" "test" "once"]}
+  :aliases {"test-clj"  "test"
+            "test-cljs" ["doo" "node" "test" "once"]
+            "test-all"  ["do" ["test-clj"] ["test-cljs"]]}
 
   :cljsbuild {:builds {:dev  {:source-paths ["src" "dev"]
                               :compiler     {:output-dir "target/cljs"

@@ -1,4 +1,4 @@
-(defproject remworks/cljs-exif-reader "0.4.0-SNAPSHOT"
+(defproject remworks/cljs-exif-reader "0.4.0"
   :description "Extract information from TIFF and JPEG images."
 
   :url "https://github.com/remvee/cljs-exif-reader"
@@ -8,10 +8,10 @@
   :clojurescript? true
 
   :dependencies [[org.clojure/clojure "1.10.0"]
-                 [org.clojure/clojurescript "1.10.516"]]
+                 [org.clojure/clojurescript "1.10.520"]]
 
   :plugins [[lein-cljsbuild "1.1.7"]
-            [lein-doo "0.1.10"]]
+            [lein-doo "0.1.11"]]
 
   :doo {:build "test"
         :alias {:default [:node]}}

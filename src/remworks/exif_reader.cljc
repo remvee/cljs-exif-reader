@@ -339,12 +339,14 @@
         num         (data-view/getUint16 data offset le)
         next-offset (data-view/getUint32 data (+ offset 2 (* num 12)) le)
         res         (for [offset (map #(+ offset 2 (* 12 %)) (range num))]
-                      (let [ifd          (ifd data offset le group)
-                            tag          (:tag ifd)
-                            next-offset  (:value ifd)
-                            seen-offsets (conj seen-offsets (:value ifd))]
-                        (if (and tag (tag-names tag))
-                          (ifds data (:value ifd) le :group tag, :seen-offsets seen-offsets)
+                      (let [ifd         (ifd data offset le group)
+                            tag         (:tag ifd)
+                            next-offset (:value ifd)]
+                        (if (and tag (tag-names tag)
+                                 (not (seen-offsets next-offset)))
+                          (ifds data (:value ifd) le
+                                :group tag
+                                :seen-offsets (conj seen-offsets (:value ifd)))
                           ifd)))
         res         (->> res
                          flatten
@@ -352,7 +354,7 @@
     (if (and next-offset
              (> next-offset 0)
              (< next-offset (data-view/getLength data))
-             (seen-offsets next-offset))
+             (not (seen-offsets next-offset)))
       (concat res (ifds data next-offset le
                         :group group
                         :seen-offsets (conj seen-offsets next-offset)))

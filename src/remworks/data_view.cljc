@@ -11,7 +11,8 @@
   (getUint16 [_ offset little-endian])
   (getUint32 [_ offset little-endian])
   (getLength [_])
-  (slice [_ offset len]))
+  (slice [_ offset len])
+  (close [_]))
 
 #? (:clj
     (do
@@ -53,7 +54,8 @@
           (DataViewImpl. (let [v (make-array Byte/TYPE len)]
                            (doseq [i (range 0 len)]
                              (aset v i (aget data (+ offset i))))
-                           v))))
+                           v)))
+        (close [_] nil))
 
       (defn to-int-byte-buffer [^java.nio.ByteBuffer buffer ^long offset ^long size little-endian]
         (when (< (+ offset size) (.limit buffer))
@@ -65,7 +67,7 @@
                 (recur (bit-or (bit-shift-left v 8) n) r)
                 v)))))
 
-      (deftype DataViewByteBufferImpl [buffer]
+      (deftype DataViewByteBufferImpl [file buffer]
         IDataView
         (getInt8 [_ offset]
           (signed (to-int-byte-buffer buffer offset 1 false) 1))
@@ -85,15 +87,18 @@
           (let [arr (byte-array len)]
             (.position buffer offset)
             (.get buffer arr 0 len)
-            (DataViewByteBufferImpl. (java.nio.ByteBuffer/wrap arr)))))
+            (DataViewByteBufferImpl. nil (java.nio.ByteBuffer/wrap arr))))
+        (close [_]
+          (when file (.close file))))
 
       (defmulti data-view #(if (satisfies? IDataView %) IDataView (class %)))
       (defmethod data-view IDataView ([data] data))
       (defmethod data-view (Class/forName "[B") ([data] (DataViewImpl. data)))
       (defmethod data-view File
         ([file]
-         (let [c (-> file (RandomAccessFile. "r") (.getChannel ))]
-           (DataViewByteBufferImpl. (.map c FileChannel$MapMode/READ_ONLY, 0 (.size c)))))))
+         (let [file    (RandomAccessFile. file "r")
+               channel (.getChannel file)]
+           (DataViewByteBufferImpl. file (.map channel FileChannel$MapMode/READ_ONLY, 0 (.size channel)))))))
 
     :cljs
     (do
@@ -120,7 +125,8 @@
         (getLength [_]
           (.-byteLength data))
         (slice [_ offset len]
-          (DataViewImpl. (js/DataView. (.-buffer data) offset len))))
+          (DataViewImpl. (js/DataView. (.-buffer data) offset len)))
+        (close [_] nil))
 
       (defn data-view [arr]
         (if (satisfies? IDataView arr)

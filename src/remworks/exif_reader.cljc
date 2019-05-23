@@ -1,5 +1,6 @@
 (ns remworks.exif-reader
   "Extract information from TIFF and JPEG images."
+  #?(:cljs (:require-macros [remworks.cljs-workaround-macros :refer [with-open]]))
   (:require [remworks.data-view :refer [data-view] :as data-view]))
 
 (def ^:private tag-names
@@ -363,7 +364,7 @@
 (defn from-tiff
   "Reading TIFF image information from a byte array."
   [data]
-  (let [data (data-view data)]
+  (with-open [data (data-view data)]
     (when (and data
                (or (and (= "MM" (to-str data 0 2)) (= 42 (data-view/getUint16 data 2 false)))
                    (and (= "II" (to-str data 0 2)) (= 42 (data-view/getUint16 data 2 true)))))
@@ -374,7 +375,7 @@
 (defn from-jpeg
   "Reading JPEG image information from a byte array."
   [data]
-  (let [data (data-view data)]
+  (with-open [data (data-view data)]
     (when (= 0xFFD8 (data-view/getUint16 data 0 false))
       (let [length (data-view/getLength data)
             data   (loop [offset 2]

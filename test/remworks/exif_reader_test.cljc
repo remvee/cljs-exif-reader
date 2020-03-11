@@ -40,3 +40,29 @@
                 "weird_date.exif"]]
     (let [m (-> (str "resources/test/" name) data-from-file sut/from-tiff)]
       (is (identity m) (str "expect " name " to yield some values")))))
+
+(deftest jpeg-meta
+  (let [{:keys [width height bits comments]} (-> "resources/test/comment.jpg"
+                                                 data-from-file
+                                                 sut/from-jpeg
+                                                 :jpeg)]
+    (is (= ["Here's a comment!"] comments))
+    (is (= 100 width))
+    (is (= 75 height))
+    (is (= 8 bits)))
+
+  (let [{:keys [width height bits] :as jpeg} (-> "resources/test/exif.jpg"
+                                                 data-from-file
+                                                 sut/from-jpeg
+                                                 :jpeg)]
+    (is (= 100 width))
+    (is (= 75 height))
+    (is (= 8 bits))
+    (is (not (contains? jpeg :comments)))))
+
+(deftest minimal-jpeg
+  (is (= {:jpeg {:bits 0, :height 0, :width 0}}
+         (-> "resources/test/tiny.jpg" data-from-file sut/from-jpeg))))
+
+(deftest empty-jpeg
+  (is (nil? (-> "resources/test/empty.jpg" data-from-file sut/from-jpeg))))

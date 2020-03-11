@@ -295,13 +295,16 @@
    :gps-longitude       to-degrees
    :shutter-speed-value to-shutter-speed-value})
 
-(defn- to-str [data offset length]
-  (->> (range offset (min (data-view/getLength data)
-                          (+ offset length)))
-       (map #(data-view/getUint8 data %))
-       (take-while (partial not= 0))
-       (map char)
-       (apply str)))
+(defn- to-str
+  ([data offset length]
+   (->> (range offset (min (data-view/getLength data)
+                           (+ offset length)))
+        (map #(data-view/getUint8 data %))
+        (take-while (partial not= 0))
+        (map char)
+        (apply str)))
+  ([data]
+   (to-str data 0 (data-view/getLength data))))
 
 (defn- ifd [data offset le group]
   (when-let [tag (get-in tag-names [group (data-view/getUint16 data offset le)])]
@@ -372,29 +375,67 @@
               {}
               (ifds data nil (= "II" (to-str data 0 2)))))))
 
+(def ^:private sof-marker? #{0xFFC0 0xFFC1 0xFFC2 0xFFC3
+                             0xFFC5 0xFFC6 0xFFC7
+                             0xFFC9 0xFFCA 0xFFCB
+                             0xFFCD 0xFFCE 0xFFCF})
+
 (defn from-jpeg
   "Reading JPEG image information from a byte array."
   [data]
   (with-open [data (data-view data)]
-    (when (= 0xFFD8 (data-view/getUint16 data 0 false))
+    (when (= 0xFFD8 (data-view/getUint16 data 0 false)) ; expect a SOI marker
       (let [length (data-view/getLength data)
-            data   (loop [offset 2]
-                     (when (< offset length)
-                       (if (= 0xFF (data-view/getUint8 data offset))
-                         (let [marker (data-view/getUint8 data (+ 1 offset))]
-                           (cond
-                             (= 0xE1 marker) ; APP1
-                             (if (= "Exif" (to-str data (+ 4 offset) 4))
-                               (data-view/slice data
-                                                (+ 4 6 offset)
-                                                (data-view/getUint16 data (+ 2 offset) false))
-                               (recur (+ 4 offset (data-view/getUint16 data (+ 2 offset) false))))
+            data
+            (loop [offset 2, props nil]
+              (if (< (+ offset 2) length)
+                (let [marker       (data-view/getUint16 data offset false)
+                      frame-length (data-view/getUint16 data (+ offset 2) false)
+                      next-offset  (+ offset frame-length 2)]
+                  (cond
+                    ;; frame has abnormal length; giving up and return what we collected
+                    (or (< frame-length 2)
+                        (< length next-offset))
+                    props
 
-                             (#{0xD9 0xDA} marker) ; EOI SOS
-                             nil
+                    ;; SOF
+                    (sof-marker? marker)
+                    (recur next-offset
+                           (update props :jpeg assoc
+                                   :bits (data-view/getUint8 data (+ offset 4))
+                                   :height (data-view/getUint16 data (+ offset 5) false)
+                                   :width (data-view/getUint16 data (+ offset 7) false)))
 
-                             :else
-                             (recur (inc offset))))
-                         (recur (inc offset)))))]
+                    ;; COM
+                    (= 0xFFFE marker)
+                    (let [frame-data (data-view/slice data (+ offset 4) (- frame-length 2))]
+                      (recur next-offset
+                             (update-in props [:jpeg :comments] (fnil conj []) (to-str frame-data))))
+
+                    ;; APP1
+                    (= 0xFFE1 marker)
+                    (let [frame-data (data-view/slice data (+ offset 4) (- frame-length 2))]
+                      (recur next-offset
+                             (if (and (not (:exif props)) (= "Exif" (to-str frame-data 0 4)))
+                               (assoc props :exif
+                                      (data-view/slice frame-data 6 (- (data-view/getLength frame-data) 6)))
+                               props)))
+
+                    ;; EOI SOS; nothing interesting beyond this point
+                    (#{0xFFD9 0xFFDA} marker)
+                    props
+
+                    ;; some other frame; skip it
+                    (<= 0xFF00 marker 0xFFFF)
+                    (recur next-offset props)
+
+                    :else ;; not a marker; giving up and return what we collected
+                    props))
+
+                ;; didn't see EOI or SOS return what we collected
+                props))]
+
         (when data
-          (from-tiff data))))))
+          (into (select-keys data [:jpeg])
+                (when-let [exif (:exif data)]
+                  (from-tiff exif))))))))

@@ -25,7 +25,7 @@
                (bit-not n)))))
 
       (defn- to-int [data offset size & [little-endian]]
-        (when (< (+ offset size) (count data))
+        (when (<= (+ offset size) (count data))
           (let [bytes ((if little-endian reverse identity)
                        (map #(bit-and (aget data %) 0xff)
                             (range offset (+ offset size))))]
@@ -58,7 +58,7 @@
         (close [_] nil))
 
       (defn to-int-byte-buffer [^java.nio.ByteBuffer buffer ^long offset ^long size little-endian]
-        (when (< (+ offset size) (.limit buffer))
+        (when (<= (+ offset size) (.limit buffer))
           (let [bytes ((if little-endian reverse identity)
                        (map #(bit-and (byte (.get buffer ^int %)) 0xff)
                             (range offset (+ offset size))))]
@@ -125,7 +125,7 @@
         (getLength [_]
           (.-byteLength data))
         (slice [_ offset len]
-          (DataViewImpl. (js/DataView. (.-buffer data) offset len)))
+          (DataViewImpl. (js/DataView. (.slice (.-buffer data) offset (+ offset len)))))
         (close [_] nil))
 
       (defn data-view [arr]

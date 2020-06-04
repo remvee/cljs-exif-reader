@@ -1,4 +1,4 @@
-#+html: <a href="https://circleci.com/gh/remvee/cljs-exif-reader"><img src="https://circleci.com/gh/remvee/cljs-exif-reader.svg?style=svg" /></a>
+#+html: <img src="https://github.com/remvee/cljs-exif-reader/workflows/Clojure%20CI/badge.svg" />
 #+html: <a href="https://clojars.org/remworks/cljs-exif-reader"><img src="https://img.shields.io/clojars/v/remworks/cljs-exif-reader.svg" /></a>
 
 

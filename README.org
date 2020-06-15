@@ -11,7 +11,7 @@
    Add a dependency to your project:
 
    #+BEGIN_SRC
-   [remworks/cljs-exif-reader "0.4.1"]
+   [remworks/cljs-exif-reader "0.5.0"]
    #+END_SRC
 
    See file:dev/cljs/user.cljs and file:resources/dev.html for an example of
@@ -19,12 +19,23 @@
 
    This library also supports CLJ:
 
-   #+BEGIN_SRC
-   (require 'remworks.exif-reader)
-   (-> "resources/test/exif.jpg"
-       java.io.File.
-       remworks.exif-reader/from-jpeg
-       :model)                                      ;; => "Canon PowerShot G3"
+   #+BEGIN_SRC clojure
+     (require 'remworks.exif-reader)
+     (-> "resources/test/exif.jpg"
+         java.io.File.
+         remworks.exif-reader/from-jpeg
+         :model)
+     ;; => "Canon PowerShot G3"
+   #+END_SRC
+
+   Also extracts some JPEG information:
+
+   #+BEGIN_SRC clojure
+     (-> "resources/test/comment.jpg"
+         java.io.File.
+         remworks.exif-reader/from-jpeg
+         :jpeg)
+     ;; => {:width 100, :height 75, :bits 8, :comments ["Here's a comment!"]}
    #+END_SRC
 
 ** License

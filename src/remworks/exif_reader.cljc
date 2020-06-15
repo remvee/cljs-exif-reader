@@ -1,6 +1,7 @@
 (ns remworks.exif-reader
   "Extract information from TIFF and JPEG images."
-  #?(:cljs (:require-macros [remworks.cljs-workaround-macros :refer [with-open]]))
+  #?(:cljs (:require-macros [remworks.cljs-workaround-macros :refer [with-open]])
+     :clj (:import java.util.Date))
   (:require [remworks.data-view :refer [data-view] :as data-view]))
 
 (def ^:private tag-names
@@ -271,14 +272,14 @@
 
 (defn to-inst [v]
   (when-let [[_ year mon day hour min sec]
-             (re-find #"^(\d{4}):(\d\d):(\d\d) (\d\d):(\d\d):(\d\d)$" v)]
+             (re-find #"(\d{4}):(\d\d):(\d\d) (\d\d):(\d\d):(\d\d)" v)]
     #?(:cljs (js/Date. (str year "-" mon "-" day "T" hour ":" min ":" sec))
-       :clj (java.util.Date. (- (Long/parseLong year) 1900)
-                             (dec (Long/parseLong mon))
-                             (Long/parseLong day)
-                             (Long/parseLong hour)
-                             (Long/parseLong min)
-                             (Long/parseLong sec)))))
+       :clj (Date. (- (Long/parseLong year) 1900)
+                   (dec (Long/parseLong mon))
+                   (Long/parseLong day)
+                   (Long/parseLong hour)
+                   (Long/parseLong min)
+                   (Long/parseLong sec)))))
 
 (defn to-shutter-speed-value [v]
   (when (instance? Rational v)

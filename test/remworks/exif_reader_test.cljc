@@ -41,6 +41,11 @@
     (let [m (-> (str "resources/test/" name) data-from-file sut/from-tiff)]
       (is (identity m) (str "expect " name " to yield some values")))))
 
+(deftest date-time
+  (let [exif (-> "resources/test/milliseconds.jpg" data-from-file sut/from-jpeg)]
+    (is (= #inst "2018-05-25T05:13:09.000-00:00" (:date-time exif))
+        "won't parse milliseconds but also won't choke on them")))
+
 (deftest jpeg-meta
   (let [{:keys [width height bits comments]} (-> "resources/test/comment.jpg"
                                                  data-from-file

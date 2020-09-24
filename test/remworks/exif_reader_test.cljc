@@ -37,7 +37,8 @@
                 "endless-loop.exif"
                 "negative-exposure-bias-value.exif"
                 "out-of-range.exif"
-                "weird_date.exif"]]
+                "weird_date.exif"
+                "truncated.exif"]]
     (let [m (-> (str "resources/test/" name) data-from-file sut/from-tiff)]
       (is (identity m) (str "expect " name " to yield some values")))))
 
